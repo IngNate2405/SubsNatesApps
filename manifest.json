@@ -2,14 +2,17 @@
   "$schema": "https://json.schemastore.org/web-manifest-combined.json",
   "name": "App Suscripciones",
   "short_name": "SubsApp",
-  "description": "Aplicación para gestionar suscripciones",
+  "description": "Aplicaci\u00f3n para gestionar suscripciones",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0D0A1A",
   "theme_color": "#1B1930",
-  "categories": ["productivity", "utilities"],
+  "categories": [
+    "productivity",
+    "utilities"
+  ],
   "lang": "es",
   "dir": "ltr",
   "prefer_related_applications": false,
@@ -70,4 +73,4 @@
       "purpose": "any maskable"
     }
   ]
-} 
+}
