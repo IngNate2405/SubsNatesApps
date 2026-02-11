@@ -834,12 +834,8 @@
                 console.log('   ❌ El Player ID no está disponible');
                 console.log('   💡 Asegúrate de estar suscrito a OneSignal en Configuración → Notificaciones');
               }
-              if (pending.some(n => {
-                const notifDate = new Date(n.notificationDate);
-                return (notifDate.getTime() - now.getTime()) > 3600000;
-              })) {
-                console.log('   ⚠️ Algunas notificaciones están muy lejanas (>1 hora)');
-                console.log('   💡 OneSignal solo permite programar hasta 1 hora en el futuro');
+              if (pending.length > 0) {
+                console.log('   💡 Las notificaciones se enviarán a la hora programada (OneSignal send_after)');
               }
               console.log('   ⚠️ Puede haber errores al enviar a OneSignal (revisa los logs de arriba)');
             } else {

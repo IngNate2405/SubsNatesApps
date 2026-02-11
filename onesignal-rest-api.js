@@ -221,10 +221,10 @@ class OneSignalRESTService {
     
     const now = new Date();
     
-    // Filtrar notificaciones que deben enviarse:
+    // Filtrar notificaciones que deben enviarse a OneSignal:
     // 1. Que no hayan sido enviadas ya (sent !== true)
     // 2. Que la fecha sea válida
-    // 3. Que la fecha esté en el pasado o muy cerca (hasta 1 hora en el futuro para permitir programación)
+    // 3. Que la fecha esté en el futuro (OneSignal programa con send_after y envía a la hora indicada)
     const toSend = scheduled.filter(notif => {
       // Omitir si ya fue enviada
       if (notif.sent === true) {
@@ -242,15 +242,16 @@ class OneSignalRESTService {
         return false;
       }
       
-      // Permitir enviar si la fecha ya pasó o está muy cerca (hasta 1 hora en el futuro)
+      // Enviar a OneSignal todas las notificaciones futuras (OneSignal las programará con send_after)
+      // Omitir solo si la fecha ya pasó (más de 1 minuto en el pasado para tolerancia)
       const timeDiff = notifDate.getTime() - now.getTime();
-      const isValid = timeDiff <= 3600000; // 1 hora en el futuro máximo
+      const isFuture = timeDiff > -60000; // Permitir hasta 1 min en el pasado por desfase
       
-      if (!isValid) {
-        console.log(`⏭️ Notificación omitida (muy lejana): ${notif.notificationDate} (${Math.round(timeDiff / 60000)} minutos)`);
+      if (!isFuture) {
+        console.log(`⏭️ Notificación omitida (ya pasó): ${notif.notificationDate}`);
       }
       
-      return isValid;
+      return isFuture;
     });
 
     console.log(`📤 Notificaciones a enviar: ${toSend.length}`);
