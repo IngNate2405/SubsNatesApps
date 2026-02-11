@@ -2,7 +2,7 @@
 // Este archivo maneja la versión de la aplicación en todas las páginas
 
 // Versión base del código (actualizar cuando haya cambios importantes)
-const APP_VERSION = '1.2.26';
+const APP_VERSION = '1.2.27';
 
 // Función para comparar versiones (retorna 1 si v1 > v2, -1 si v1 < v2, 0 si iguales)
 function compareVersions(v1, v2) {

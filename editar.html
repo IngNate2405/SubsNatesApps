@@ -768,91 +768,31 @@
         console.warn('⚠️ oneSignalService no disponible');
       }
 
-      // Programar notificaciones en OneSignal REST API (solo cuando la app está cerrada)
-      // Esperar un poco más para asegurar que OneSignal esté inicializado y el restApiKey esté cargado
-      setTimeout(async () => {
-        try {
-          // Verificar que el servicio esté disponible
-          if (typeof oneSignalRESTService === 'undefined') {
-            console.warn('⚠️ oneSignalRESTService no está disponible');
-            return;
-          }
-
-          // Verificar que el REST API Key esté configurado
+      // Enviar notificaciones a OneSignal ANTES de redirigir (así OneSignal las programa y se ven en Messages)
+      let restCount = 0;
+      try {
+        if (typeof oneSignalRESTService !== 'undefined') {
           const restApiKey = ONESIGNAL_CONFIG?.restApiKey || oneSignalRESTService.restApiKey;
-          if (!restApiKey) {
-            console.warn('⚠️ REST API Key no configurado. Las notificaciones cuando la app está cerrada no funcionarán.');
-            console.warn('💡 Configura ONESIGNAL_REST_API_KEY en GitHub Secrets para que funcione en producción.');
-            return;
-          }
-
-          console.log('📬 Programando notificaciones con OneSignal REST API...');
-          
-          // Verificar Player ID antes de programar
-          let playerIdCheck = null;
-          try {
-            if (typeof OneSignal !== 'undefined' && OneSignal.User && OneSignal.User.PushSubscription) {
-              playerIdCheck = await OneSignal.User.PushSubscription.id;
-              console.log('✅ Player ID disponible para programar:', playerIdCheck ? playerIdCheck.substring(0, 8) + '...' : 'null');
-            } else {
-              console.warn('⚠️ OneSignal no está disponible para obtener Player ID');
+          if (restApiKey) {
+            console.log('📬 Enviando recordatorios a OneSignal (aparecerán en Messages → programadas)...');
+            restCount = await oneSignalRESTService.scheduleAllPendingNotifications();
+            if (restCount > 0) {
+              console.log(`✅ ${restCount} notificación(es) enviada(s) a OneSignal. Verás las programadas en el dashboard en Messages.`);
             }
-          } catch (e) {
-            console.warn('⚠️ No se pudo obtener Player ID antes de programar:', e.message);
-          }
-          
-          const count = await oneSignalRESTService.scheduleAllPendingNotifications();
-          if (count > 0) {
-            console.log(`✅ ${count} notificaciones programadas en OneSignal para cuando la app esté cerrada`);
-            showNotification('✅ Notificaciones programadas', `${count} notificaciones se enviarán automáticamente`, 'success');
           } else {
-            // Verificar si hay notificaciones pero no se pudieron enviar
-            const scheduled = JSON.parse(localStorage.getItem('onesignalScheduled') || '[]');
-            const pending = scheduled.filter(n => !n.sent);
-            const now = new Date();
-            
-            console.log(`📋 Diagnóstico de notificaciones:`);
-            console.log(`   - Total en localStorage: ${scheduled.length}`);
-            console.log(`   - Pendientes (no enviadas): ${pending.length}`);
-            console.log(`   - Player ID disponible: ${playerIdCheck ? 'Sí' : 'No'}`);
-            
-            if (pending.length > 0) {
-              console.log(`ℹ️ Hay ${pending.length} notificaciones pendientes pero no se pudieron programar`);
-              console.log('📋 Detalles de las notificaciones pendientes:');
-              pending.forEach((n, index) => {
-                const notifDate = new Date(n.notificationDate);
-                const timeDiff = notifDate.getTime() - now.getTime();
-                const minutes = Math.round(timeDiff / 60000);
-                console.log(`   ${index + 1}. ${n.subscriptionName}:`);
-                console.log(`      - Fecha: ${n.notificationDate}`);
-                console.log(`      - Diferencia: ${minutes} minutos (${timeDiff > 3600000 ? 'muy lejana' : 'válida'})`);
-                console.log(`      - ID: ${n.id || 'sin ID'}`);
-              });
-              
-              console.log('💡 Posibles causas:');
-              if (!playerIdCheck) {
-                console.log('   ❌ El Player ID no está disponible');
-                console.log('   💡 Asegúrate de estar suscrito a OneSignal en Configuración → Notificaciones');
-              }
-              if (pending.length > 0) {
-                console.log('   💡 Las notificaciones se enviarán a la hora programada (OneSignal send_after)');
-              }
-              console.log('   ⚠️ Puede haber errores al enviar a OneSignal (revisa los logs de arriba)');
-            } else {
-              console.log('ℹ️ No hay notificaciones pendientes para programar');
-              console.log('💡 Esto puede ser porque:');
-              console.log('   - Ya fueron programadas anteriormente');
-              console.log('   - No hay suscripciones con notificaciones configuradas');
-            }
+            console.warn('⚠️ REST API Key no configurado. Configura ONESIGNAL_REST_API_KEY en GitHub Secrets para que los recordatorios se envíen a OneSignal.');
           }
-        } catch (error) {
-          console.error('❌ Error al programar notificaciones en OneSignal:', error);
-          console.error('Detalles:', error.message, error.stack);
         }
-      }, 3000); // Aumentado a 3 segundos para dar más tiempo
+      } catch (err) {
+        console.error('❌ Error al enviar a OneSignal:', err);
+      }
 
-      // Continuar con el guardado inmediatamente (no esperar al Service Worker)
-      alert(isNew ? 'Suscripción creada' : 'Suscripción actualizada');
+      // Mensaje y redirección
+      if (restCount > 0) {
+        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + restCount + ' recordatorio(s) enviados a OneSignal. Te llegarán a la hora programada.');
+      } else {
+        alert(isNew ? 'Suscripción creada' : 'Suscripción actualizada');
+      }
       window.location.href = 'index.html';
     }
 

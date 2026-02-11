@@ -9,10 +9,15 @@ Si ves "✅ Notificación programada enviada a OneSignal" pero las notificacione
 3. Ve a **Messages** > **History**
 4. Busca notificaciones recientes
 
+### ¿Dónde ver las programadas?
+
+- **Messages** → **History**: ahí aparecen los mensajes enviados y también los **programados** (con fecha de envío futura). Cada recordatorio que envías al guardar una suscripción debería aparecer aquí con el nombre tipo "Recordatorio: [nombre] - [fecha/hora]".
+- Si no ves ninguna entrada después de guardar, revisa que **ONESIGNAL_REST_API_KEY** esté en GitHub Secrets y que el deploy haya terminado.
+
 ### ¿Qué buscar?
 
-- **Si ves notificaciones programadas**: OneSignal las recibió correctamente
-- **Si NO ves notificaciones**: Hay un problema al enviarlas
+- **Si ves notificaciones programadas**: OneSignal las recibió correctamente y las enviará a la hora indicada.
+- **Si NO ves notificaciones**: Hay un problema al enviarlas (REST API Key, Player ID o formato de la API).
 
 ## 🔍 Paso 2: Revisar los Logs en la Consola
 
