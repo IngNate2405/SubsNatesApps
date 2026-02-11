@@ -81,8 +81,25 @@ class OneSignalRESTService {
     // Nombre interno para ver la notificación en el dashboard de OneSignal (Messages)
     const messageName = `Recordatorio: ${(notificationData.subscriptionName || 'Suscripción').substring(0, 30)} - ${new Date(sendAfterDate).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' })}`;
 
-    // Intentar primero API actual (api.onesignal.com) con Authorization: Key
-    const authHeader = this.restApiKey.startsWith('Key ') ? this.restApiKey : `Key ${this.restApiKey}`;
+    // Authorization: según doc https://documentation.onesignal.com/docs/keys-and-ids
+    const rawKey = this.restApiKey.startsWith('Key ') ? this.restApiKey.slice(4).trim() : this.restApiKey;
+    const authKey = `Key ${rawKey}`;
+
+    // Payload legacy (v1): include_player_ids — el SDK Web devuelve Player ID
+    const payloadLegacy = {
+      app_id: this.appId,
+      include_player_ids: [playerId],
+      headings: { en: notificationData.title || 'Recordatorio de Suscripción' },
+      contents: { en: notificationData.body || 'Tu suscripción vence pronto' },
+      send_after: sendAfterDate,
+      data: {
+        subscriptionId: notificationData.subscriptionId,
+        subscriptionName: notificationData.subscriptionName,
+        nextPayment: notificationData.nextPayment
+      }
+    };
+
+    // Payload API nueva (api.onesignal.com): include_subscription_ids
     const payloadNew = {
       app_id: this.appId,
       target_channel: 'push',
@@ -98,50 +115,50 @@ class OneSignalRESTService {
       }
     };
 
-    const payloadLegacy = {
-      app_id: this.appId,
-      include_player_ids: [playerId],
-      headings: { en: notificationData.title || 'Recordatorio de Suscripción' },
-      contents: { en: notificationData.body || 'Tu suscripción vence pronto' },
-      send_after: sendAfterDate,
-      data: {
-        subscriptionId: notificationData.subscriptionId,
-        subscriptionName: notificationData.subscriptionName,
-        nextPayment: notificationData.nextPayment
-      }
-    };
-
     console.log('📤 Enviando a OneSignal:', {
       app_id: this.appId,
-      subscription_id: playerId.substring(0, 8) + '...',
+      player_id: playerId.substring(0, 8) + '...',
       send_after: sendAfterDate,
-      title: payloadNew.headings.en,
-      name: messageName
+      title: payloadLegacy.headings.en
     });
 
     try {
-      // 1) Probar API actual (Authorization: Key)
-      let response = await fetch(this.apiUrlNew, {
+      // 1) Probar API legacy (v1) con include_player_ids — suele funcionar con la REST API Key del dashboard
+      let response = await fetch(this.apiUrlLegacy, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': authHeader
+          'Authorization': authKey
         },
-        body: JSON.stringify(payloadNew)
+        body: JSON.stringify(payloadLegacy)
       });
 
       let result = await response.json();
 
-      // Si la API nueva falla por targeting (400/invalid), probar API legacy
-      if (!response.ok && (response.status === 400 || response.status === 401)) {
-        console.log('🔄 Probando API legacy (v1)...');
+      // 2) Si legacy falla con 401, probar Bearer (claves antiguas)
+      if (!response.ok && response.status === 401) {
+        console.log('🔄 Probando API legacy con Bearer...');
         response = await fetch(this.apiUrlLegacy, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.restApiKey}`
+            'Authorization': `Bearer ${rawKey}`
           },
           body: JSON.stringify(payloadLegacy)
+        });
+        result = await response.json();
+      }
+
+      // 3) Si sigue fallando, probar API actual (api.onesignal.com)
+      if (!response.ok && (response.status === 400 || response.status === 401)) {
+        console.log('🔄 Probando API actual (api.onesignal.com)...');
+        response = await fetch(this.apiUrlNew, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authKey
+          },
+          body: JSON.stringify(payloadNew)
         });
         result = await response.json();
       }
@@ -174,7 +191,7 @@ class OneSignalRESTService {
       } else {
         console.error('❌ Error al enviar notificación a OneSignal');
         console.error('📋 Respuesta de error:', JSON.stringify(result, null, 2));
-        console.error('📤 Payload enviado:', JSON.stringify(payloadNew, null, 2));
+        console.error('📤 Payload enviado:', JSON.stringify(payloadLegacy, null, 2));
         console.error('🔑 Status HTTP:', response.status);
         
         // Mostrar mensajes de error específicos
@@ -199,17 +216,18 @@ class OneSignalRESTService {
       console.error('❌ REST API Key no configurado');
       return false;
     }
-
+    const rawKey = this.restApiKey.startsWith('Key ') ? this.restApiKey.slice(4).trim() : this.restApiKey;
+    const authKey = `Key ${rawKey}`;
     try {
-      const response = await fetch(this.apiUrl, {
+      const response = await fetch(this.apiUrlLegacy, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.restApiKey}`
+          'Authorization': authKey
         },
         body: JSON.stringify({
           app_id: this.appId,
-          included_segments: ['All'], // Enviar a todos
+          included_segments: ['All'],
           headings: { en: notificationData.title || 'Recordatorio de Suscripción' },
           contents: { en: notificationData.body || 'Tu suscripción vence pronto' },
           send_after: notificationData.notificationDate,

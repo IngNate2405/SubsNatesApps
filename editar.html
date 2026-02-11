@@ -768,19 +768,20 @@
         console.warn('⚠️ oneSignalService no disponible');
       }
 
-      // Enviar notificaciones a OneSignal ANTES de redirigir (así OneSignal las programa y se ven en Messages)
+      // Enviar notificaciones a OneSignal ANTES de redirigir (aparecen en Dashboard > Messages)
       let restCount = 0;
       try {
         if (typeof oneSignalRESTService !== 'undefined') {
+          oneSignalRESTService.updateRestApiKey();
           const restApiKey = ONESIGNAL_CONFIG?.restApiKey || oneSignalRESTService.restApiKey;
           if (restApiKey) {
-            console.log('📬 Enviando recordatorios a OneSignal (aparecerán en Messages → programadas)...');
+            console.log('📬 Enviando recordatorios a OneSignal...');
             restCount = await oneSignalRESTService.scheduleAllPendingNotifications();
             if (restCount > 0) {
-              console.log(`✅ ${restCount} notificación(es) enviada(s) a OneSignal. Verás las programadas en el dashboard en Messages.`);
+              console.log(`✅ ${restCount} notificación(es) enviada(s) a OneSignal. Dashboard: Messages > History.`);
             }
           } else {
-            console.warn('⚠️ REST API Key no configurado. Configura ONESIGNAL_REST_API_KEY en GitHub Secrets para que los recordatorios se envíen a OneSignal.');
+            console.warn('⚠️ REST API Key no configurado. Añade ONESIGNAL_REST_API_KEY en GitHub Secrets (valor: OneSignal > Settings > Keys & IDs > REST API Key).');
           }
         }
       } catch (err) {
@@ -791,7 +792,8 @@
       if (restCount > 0) {
         alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + restCount + ' recordatorio(s) enviados a OneSignal. Te llegarán a la hora programada.');
       } else {
-        alert(isNew ? 'Suscripción creada' : 'Suscripción actualizada');
+        const msg = (isNew ? 'Suscripción creada.' : 'Suscripción actualizada.') + ' No se enviaron recordatorios a OneSignal. Revisa: 1) GitHub Secrets → ONESIGNAL_REST_API_KEY. 2) Haber aceptado notificaciones en la app. 3) Consola (F12) para detalles.';
+        alert(msg);
       }
       window.location.href = 'index.html';
     }
