@@ -144,7 +144,7 @@
     for (const notifType of subscription.notifications) {
       const date = calculateNotificationDate(nextPayment, notifType);
       if (!date || isNaN(date.getTime())) continue;
-      if (date.getTime() <= now.getTime() + 60000) continue; // ya pasó o en 1 min
+      if (date.getTime() <= now.getTime() + 5000) continue; // solo omitir si ya pasó o es en menos de 5 segundos
 
       const sendAfterIso = date.toISOString();
       const apiResult = await sendOneToOneSignal(subscriptionId, {
