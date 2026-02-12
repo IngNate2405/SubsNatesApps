@@ -269,7 +269,7 @@ class OneSignalRESTService {
       console.error('   2. Verifica que exista ONESIGNAL_REST_API_KEY');
       console.error('   3. Espera a que el workflow de deployment termine');
       console.error('   4. Recarga la página');
-      return 0;
+      return { sent: 0, pending: 0 };
     }
     console.log('✅ REST API Key encontrado:', this.restApiKey.substring(0, 8) + '...');
 
@@ -315,8 +315,8 @@ class OneSignalRESTService {
     console.log(`📤 Diagnóstico: Clave REST ${this.restApiKey ? '✅ sí' : '❌ no'}. Pendientes a enviar: ${toSend.length}`);
 
     if (toSend.length === 0) {
-      console.log('ℹ️ No hay notificaciones programadas para enviar');
-      return 0;
+      console.log('ℹ️ No hay notificaciones programadas para enviar (normal si no configuraste recordatorios)');
+      return { sent: 0, pending: 0 };
     }
 
     // Obtener el Player ID del usuario actual de OneSignal (con reintento si OneSignal acaba de inicializarse)
@@ -402,7 +402,7 @@ class OneSignalRESTService {
     console.log(`💾 localStorage actualizado: ${cleanedScheduled.length} notificaciones (${cleanedScheduled.filter(n => !n.sent).length} pendientes)`);
 
     console.log(`✅ Total de notificaciones programadas: ${sentCount}/${toSend.length}`);
-    return sentCount;
+    return { sent: sentCount, pending: toSend.length };
   }
 }
 

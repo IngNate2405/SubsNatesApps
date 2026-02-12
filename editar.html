@@ -769,31 +769,33 @@
       }
 
       // Enviar notificaciones a OneSignal ANTES de redirigir (aparecen en Dashboard > Messages)
-      let restCount = 0;
+      let restResult = { sent: 0, pending: 0 };
       try {
         if (typeof oneSignalRESTService !== 'undefined') {
           oneSignalRESTService.updateRestApiKey();
           const restApiKey = ONESIGNAL_CONFIG?.restApiKey || oneSignalRESTService.restApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('onesignal_rest_api_key') : null);
           if (restApiKey && restApiKey.trim()) {
             console.log('📬 Enviando recordatorios a OneSignal...');
-            restCount = await oneSignalRESTService.scheduleAllPendingNotifications();
-            if (restCount > 0) {
-              console.log(`✅ ${restCount} notificación(es) enviada(s) a OneSignal. Dashboard: Messages > History.`);
+            restResult = await oneSignalRESTService.scheduleAllPendingNotifications();
+            if (typeof restResult === 'number') restResult = { sent: restResult, pending: restResult };
+            if (restResult.sent > 0) {
+              console.log(`✅ ${restResult.sent} notificación(es) enviada(s) a OneSignal. Dashboard: Messages > History.`);
             }
           } else {
-            console.warn('⚠️ REST API Key no configurado. Añade ONESIGNAL_REST_API_KEY en GitHub Secrets (valor: OneSignal > Settings > Keys & IDs > REST API Key).');
+            console.warn('⚠️ REST API Key no configurado.');
           }
         }
       } catch (err) {
         console.error('❌ Error al enviar a OneSignal:', err);
       }
 
-      // Mensaje y redirección
-      if (restCount > 0) {
-        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + restCount + ' recordatorio(s) enviados a OneSignal. Te llegarán a la hora programada.');
+      // Mensaje y redirección: solo avisar de OneSignal si había pendientes y no se envió ninguno
+      if (restResult.sent > 0) {
+        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + restResult.sent + ' recordatorio(s) enviados a OneSignal. Te llegarán a la hora programada.');
+      } else if (restResult.pending > 0) {
+        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + ' No se pudieron enviar ' + restResult.pending + ' recordatorio(s) a OneSignal. Ve a Configuración → Push Notifications → pega tu Clave REST API (OneSignal → Keys & IDs) y Guardar clave.');
       } else {
-        const msg = (isNew ? 'Suscripción creada.' : 'Suscripción actualizada.') + ' No se enviaron recordatorios a OneSignal. Ve a Configuración → Push Notifications → pega tu "Clave REST API" (OneSignal → Keys & IDs) y Guardar clave.';
-        alert(msg);
+        alert(isNew ? 'Suscripción creada' : 'Suscripción actualizada');
       }
       window.location.href = 'index.html';
     }
