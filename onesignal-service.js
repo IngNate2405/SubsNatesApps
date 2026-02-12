@@ -122,6 +122,12 @@ class OneSignalService {
       return false;
     }
 
+    // OneSignal SDK v16 solo permite HTTPS (no HTTP)
+    if (typeof location !== 'undefined' && location.protocol !== 'https:') {
+      console.warn('⚠️ OneSignal requiere HTTPS. Abre la app con https:// (ej. https://' + (location.hostname || 'tudominio.com') + ')');
+      return false;
+    }
+
     try {
       // Verificar si OneSignal ya está inicializado
       if (OneSignal.SDK_VERSION) {
