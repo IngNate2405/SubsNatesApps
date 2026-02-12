@@ -967,6 +967,32 @@
       }
     }
 
+    function saveOneSignalRestApiKey() {
+      const input = document.getElementById('onesignal-rest-api-key-input');
+      const statusEl = document.getElementById('onesignal-key-status');
+      if (!input || !statusEl) return;
+      const key = (input.value || '').trim();
+      if (!key) {
+        statusEl.textContent = 'Escribe o pega la clave y pulsa Guardar clave.';
+        statusEl.className = 'text-xs mt-2 text-yellow-400';
+        return;
+      }
+      try {
+        localStorage.setItem('onesignal_rest_api_key', key);
+        statusEl.textContent = '✅ Clave guardada. Los recordatorios se enviarán a OneSignal al guardar suscripciones.';
+        statusEl.className = 'text-xs mt-2 text-green-400';
+        input.value = '';
+        input.placeholder = 'Clave guardada (vuelve a pegar para cambiar)';
+        if (typeof oneSignalRESTService !== 'undefined') {
+          oneSignalRESTService.updateRestApiKey();
+        }
+        showNotification('✅ Clave guardada', 'Los recordatorios se enviarán a OneSignal al guardar.', 'success');
+      } catch (e) {
+        statusEl.textContent = '❌ No se pudo guardar: ' + (e.message || 'error');
+        statusEl.className = 'text-xs mt-2 text-red-400';
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       console.log('DOM cargado, verificando estado de notificaciones...');
       
@@ -985,6 +1011,13 @@
       
       // Cargar versión
       cargarVersion();
+
+      // Mostrar si ya hay clave REST guardada (para recordatorios)
+      const keyStatusEl = document.getElementById('onesignal-key-status');
+      if (keyStatusEl && localStorage.getItem('onesignal_rest_api_key')) {
+        keyStatusEl.textContent = '✅ Tienes una clave guardada. Los recordatorios se envían a OneSignal al guardar.';
+        keyStatusEl.className = 'text-xs mt-2 text-green-400';
+      }
       
       // Verificar estado inmediatamente (sin mostrar notificaciones)
       syncNotificationStatus();
@@ -1356,6 +1389,13 @@
               <button onclick="checkOneSignalStatus(true)" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm w-full">
                 Verificar Estado
               </button>
+            </div>
+            <div class="mt-4 p-3 bg-[#2a2736] rounded-lg border border-gray-600">
+              <label class="block text-sm font-medium text-gray-300 mb-2">Clave REST API (recordatorios al guardar)</label>
+              <p class="text-xs text-gray-400 mb-2">Si los recordatorios no se envían a OneSignal, pega aquí tu clave. OneSignal → Settings → Keys &amp; IDs → REST API Key.</p>
+              <input type="password" id="onesignal-rest-api-key-input" placeholder="Pega la clave REST API" class="w-full px-3 py-2 rounded bg-[#1a1722] border border-gray-600 text-sm text-gray-200 placeholder-gray-500 mb-2"/>
+              <button onclick="saveOneSignalRestApiKey()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm w-full">Guardar clave</button>
+              <p id="onesignal-key-status" class="text-xs mt-2"></p>
             </div>
             <div class="text-xs text-gray-400 mt-3">
               💡 OneSignal es 100% gratuito hasta 10,000 suscriptores

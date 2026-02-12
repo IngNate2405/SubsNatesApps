@@ -6,9 +6,10 @@ class OneSignalRESTService {
     // Obtener estas credenciales desde el dashboard de OneSignal
     // Settings > Keys & IDs > REST API Key
     this.appId = ONESIGNAL_CONFIG?.appId || 'c9a462f2-6b41-40f2-80c3-d173c255c469';
-    // El REST API Key se carga desde onesignal-config-local.js (no se sube a GitHub)
-    // Si no existe, intentar leer desde ONESIGNAL_CONFIG (para desarrollo)
-    this.restApiKey = ONESIGNAL_CONFIG?.restApiKey || null;
+    // Origen de la clave: 1) onesignal-config-local.js (deploy), 2) localStorage (pegada en Configuración)
+    const fromConfig = typeof ONESIGNAL_CONFIG !== 'undefined' && ONESIGNAL_CONFIG?.restApiKey;
+    const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('onesignal_rest_api_key') : null;
+    this.restApiKey = (fromConfig && ONESIGNAL_CONFIG.restApiKey) || (fromStorage && fromStorage.trim()) || null;
     // API actual de OneSignal (Messages); fallback a v1 legacy por compatibilidad
     this.apiUrlNew = 'https://api.onesignal.com/notifications?c=push';
     this.apiUrlLegacy = 'https://onesignal.com/api/v1/notifications';
@@ -23,10 +24,10 @@ class OneSignalRESTService {
   
   // Método para actualizar el REST API Key (por si se carga después)
   updateRestApiKey() {
-    const newKey = ONESIGNAL_CONFIG?.restApiKey || null;
-    if (newKey && newKey !== this.restApiKey) {
-      this.restApiKey = newKey;
-      console.log('✅ OneSignal REST API Key actualizado:', this.restApiKey.substring(0, 8) + '...');
+    const newKey = (typeof ONESIGNAL_CONFIG !== 'undefined' && ONESIGNAL_CONFIG?.restApiKey) || (typeof localStorage !== 'undefined' ? localStorage.getItem('onesignal_rest_api_key') : null);
+    if (newKey && newKey.trim()) {
+      this.restApiKey = newKey.trim();
+      console.log('✅ OneSignal REST API Key disponible:', this.restApiKey.substring(0, 8) + '...');
     }
     return this.restApiKey;
   }

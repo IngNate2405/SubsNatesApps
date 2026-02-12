@@ -773,8 +773,8 @@
       try {
         if (typeof oneSignalRESTService !== 'undefined') {
           oneSignalRESTService.updateRestApiKey();
-          const restApiKey = ONESIGNAL_CONFIG?.restApiKey || oneSignalRESTService.restApiKey;
-          if (restApiKey) {
+          const restApiKey = ONESIGNAL_CONFIG?.restApiKey || oneSignalRESTService.restApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('onesignal_rest_api_key') : null);
+          if (restApiKey && restApiKey.trim()) {
             console.log('📬 Enviando recordatorios a OneSignal...');
             restCount = await oneSignalRESTService.scheduleAllPendingNotifications();
             if (restCount > 0) {
@@ -792,7 +792,7 @@
       if (restCount > 0) {
         alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + restCount + ' recordatorio(s) enviados a OneSignal. Te llegarán a la hora programada.');
       } else {
-        const msg = (isNew ? 'Suscripción creada.' : 'Suscripción actualizada.') + ' No se enviaron recordatorios a OneSignal. Revisa: 1) GitHub Secrets → ONESIGNAL_REST_API_KEY. 2) Haber aceptado notificaciones en la app. 3) Consola (F12) para detalles.';
+        const msg = (isNew ? 'Suscripción creada.' : 'Suscripción actualizada.') + ' No se enviaron recordatorios a OneSignal. Ve a Configuración → Push Notifications → pega tu "Clave REST API" (OneSignal → Keys & IDs) y Guardar clave.';
         alert(msg);
       }
       window.location.href = 'index.html';
