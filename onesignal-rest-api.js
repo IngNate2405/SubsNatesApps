@@ -32,16 +32,22 @@ class OneSignalRESTService {
     return this.restApiKey;
   }
 
-  // Enviar notificación programada a un usuario específico
+  // Último error de OneSignal (para mostrarlo al usuario)
+  lastError = null;
+
+  // Enviar notificación programada a un usuario específico. Retorna { success, error }.
   async sendScheduledNotification(notificationData, playerId) {
+    this.lastError = null;
     if (!this.restApiKey) {
-      console.error('❌ REST API Key no configurado. Ve a OneSignal Dashboard > Settings > Keys & IDs');
-      return false;
+      this.lastError = 'No hay clave REST API. Configuración → pega tu Clave REST (OneSignal → Keys & IDs).';
+      console.error('❌ REST API Key no configurado.');
+      return { success: false, error: this.lastError };
     }
 
     if (!playerId) {
+      this.lastError = 'No se obtuvo el dispositivo. Abre la app desde la pantalla de inicio, ve a Configuración → Notificaciones y suscríbete.';
       console.error('❌ Player ID no proporcionado');
-      return false;
+      return { success: false, error: this.lastError };
     }
 
     // Asegurar que la fecha esté en formato ISO 8601 correcto
@@ -169,45 +175,24 @@ class OneSignalRESTService {
       if (response.ok && response.status >= 200 && response.status < 300) {
         // Verificar que la respuesta tenga un ID (indica que se programó correctamente)
         if (result.id) {
-          console.log('✅ Notificación programada enviada a OneSignal');
-          console.log('📋 ID de notificación OneSignal:', result.id);
-          console.log('📅 Fecha programada:', sendAfterDate);
-          console.log('👤 Player ID:', playerId.substring(0, 8) + '...');
-          console.log('💡 La notificación se enviará en:', sendAfterDate);
-          console.log('📋 Respuesta completa:', JSON.stringify(result, null, 2));
-          return true;
+          console.log('✅ Notificación programada enviada a OneSignal. ID:', result.id);
+          return { success: true };
         } else {
-          // Respuesta OK pero sin ID - puede ser un error
-          console.error('❌ OneSignal respondió OK pero sin ID de notificación');
-          console.error('📋 Respuesta completa:', JSON.stringify(result, null, 2));
-          console.error('⚠️ Esto puede indicar que la notificación no se programó correctamente');
-          
-          // Verificar si hay errores en la respuesta
-          if (result.errors && result.errors.length > 0) {
-            console.error('❌ Errores en la respuesta:', result.errors);
-          }
-          
-          return false;
+          const errMsg = (result.errors && result.errors.length) ? result.errors.join(', ') : 'Sin ID en respuesta';
+          this.lastError = 'OneSignal: ' + errMsg;
+          console.error('❌ OneSignal respondió OK pero sin ID:', result);
+          return { success: false, error: this.lastError };
         }
       } else {
-        console.error('❌ Error al enviar notificación a OneSignal');
-        console.error('📋 Respuesta de error:', JSON.stringify(result, null, 2));
-        console.error('📤 Payload enviado:', JSON.stringify(payloadLegacy, null, 2));
-        console.error('🔑 Status HTTP:', response.status);
-        
-        // Mostrar mensajes de error específicos
-        if (result.errors) {
-          console.error('❌ Errores de OneSignal:');
-          result.errors.forEach((error, index) => {
-            console.error(`   ${index + 1}. ${error}`);
-          });
-        }
-        
-        return false;
+        const errMsg = (result.errors && Array.isArray(result.errors)) ? result.errors.join(', ') : (result.errors && typeof result.errors === 'object' ? JSON.stringify(result.errors) : 'HTTP ' + response.status);
+        this.lastError = 'OneSignal: ' + errMsg;
+        console.error('❌ Error OneSignal:', this.lastError);
+        return { success: false, error: this.lastError };
       }
     } catch (error) {
+      this.lastError = (error.message || String(error));
       console.error('❌ Error al enviar notificación:', error);
-      return false;
+      return { success: false, error: this.lastError };
     }
   }
 
@@ -354,22 +339,18 @@ class OneSignalRESTService {
       let sent = false;
       
       if (playerId) {
-        // Enviar a usuario específico
-        sent = await this.sendScheduledNotification(notif, playerId);
+        const res = await this.sendScheduledNotification(notif, playerId);
+        sent = res && res.success;
         if (sent) {
           sentCount++;
           console.log(`✅ Notificación programada exitosamente`);
         } else {
-          console.error(`❌ Error al programar notificación para ${notif.subscriptionName}`);
+          console.error(`❌ Error: ${(res && res.error) || this.lastError || 'desconocido'}`);
         }
       } else {
-        // Si no hay Player ID, enviar a todos (para pruebas)
-        console.warn('⚠️ No hay Player ID, enviando a todos los suscriptores');
-        sent = await this.sendToAll(notif);
-        if (sent) {
-          sentCount++;
-          console.log(`✅ Notificación programada para todos`);
-        }
+        this.lastError = 'No hay Player ID. Suscríbete en Configuración → Notificaciones.';
+        console.warn('⚠️ No hay Player ID');
+        sent = false;
       }
       
       // Marcar como enviada en la copia
@@ -401,8 +382,9 @@ class OneSignalRESTService {
     localStorage.setItem('onesignalScheduled', JSON.stringify(cleanedScheduled));
     console.log(`💾 localStorage actualizado: ${cleanedScheduled.length} notificaciones (${cleanedScheduled.filter(n => !n.sent).length} pendientes)`);
 
-    console.log(`✅ Total de notificaciones programadas: ${sentCount}/${toSend.length}`);
-    return { sent: sentCount, pending: toSend.length };
+    console.log(`✅ Total: ${sentCount}/${toSend.length} enviadas`);
+    const error = (sentCount === 0 && toSend.length > 0) ? (this.lastError || 'Error desconocido') : null;
+    return { sent: sentCount, pending: toSend.length, error };
   }
 }
 

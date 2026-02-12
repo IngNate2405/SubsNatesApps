@@ -791,9 +791,10 @@
 
       // Mensaje y redirección: solo avisar de OneSignal si había pendientes y no se envió ninguno
       if (restResult.sent > 0) {
-        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + restResult.sent + ' recordatorio(s) enviados a OneSignal. Te llegarán a la hora programada.');
+        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + restResult.sent + ' recordatorio(s) enviados a OneSignal. Verás la notificación en OneSignal → Messages. Te llegará al teléfono a la hora programada.');
       } else if (restResult.pending > 0) {
-        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + ' No se pudieron enviar ' + restResult.pending + ' recordatorio(s) a OneSignal. Ve a Configuración → Push Notifications → pega tu Clave REST API (OneSignal → Keys & IDs) y Guardar clave.');
+        const motivo = (restResult.error && restResult.error.trim()) ? ('\nMotivo: ' + restResult.error) : '';
+        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + ' No se pudieron enviar ' + restResult.pending + ' recordatorio(s) a OneSignal.' + motivo + '\n\nSi falta la clave: Configuración → Push Notifications → pega Clave REST API (OneSignal → Keys & IDs) y Guardar clave.');
       } else {
         alert(isNew ? 'Suscripción creada' : 'Suscripción actualizada');
       }
