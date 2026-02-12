@@ -1321,100 +1321,22 @@
       </button>
     </div>
 
-    <!-- Sección de Notificaciones -->
+    <!-- Sección de Notificaciones (enlace a pantalla dedicada) -->
     <div class="bg-[#1B1930] rounded-xl p-6 mb-6">
       <h2 class="text-xl font-bold mb-4">Notificaciones</h2>
-      
-      <!-- Advertencia de contexto -->
-      <div id="contextWarning" class="hidden bg-yellow-600/20 border border-yellow-600/30 rounded-lg p-4 mb-4">
-        <div class="flex items-start space-x-3">
-          <i class="fas fa-exclamation-triangle text-yellow-400 mt-1"></i>
-          <div>
-            <h3 class="font-semibold text-yellow-400 mb-2">Contexto no válido para notificaciones</h3>
-            <p class="text-yellow-300 text-sm mb-3">
-              Estás abriendo la aplicación desde el sistema de archivos. Las notificaciones push requieren un servidor web (http/https).
-            </p>
-            <div class="text-yellow-300 text-sm">
-              <p class="font-semibold mb-1">Para usar notificaciones:</p>
-              <ul class="list-disc list-inside space-y-1">
-                <li>Usa un servidor local como Live Server en VS Code</li>
-                <li>O sube la app a un servidor web</li>
-                <li>O usa herramientas como Python: <code class="bg-yellow-600/30 px-1 rounded">python -m http.server</code></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-      
+      <!-- Elementos ocultos para que el JS legacy de notificaciones no falle si se ejecuta -->
+      <span id="notificationStatus" class="hidden" aria-hidden="true"></span>
+      <div id="onesignal-status" class="hidden" aria-hidden="true"></div>
       <div class="space-y-4">
         <div class="flex justify-between items-center">
           <div>
-            <h3 class="font-semibold">Estado de notificaciones</h3>
-            <p class="text-gray-400 text-sm">Permisos del navegador</p>
+            <h3 class="font-semibold">Plataforma y tipo de recordatorio</h3>
+            <p class="text-gray-400 text-sm">Elige OneSignal y qué recordatorios quieres (1 día antes, mismo día, etc.)</p>
           </div>
-          <span id="notificationStatus" class="text-yellow-400">Verificando...</span>
-        </div>
-        
-        <div class="flex justify-between items-center">
-          <div>
-            <h3 class="font-semibold">Solicitar permisos</h3>
-            <p class="text-gray-400 text-sm">Activar notificaciones push</p>
-          </div>
-          <button onclick="requestNotificationPermission()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm">
-            Solicitar
+          <button onclick="window.location.href='notificaciones.html'" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm">
+            Abrir
           </button>
         </div>
-        <div class="flex justify-between items-center">
-          <div>
-            <h3 class="font-semibold">Notificación de prueba</h3>
-            <p class="text-gray-400 text-sm">Verifica que las notificaciones funcionan</p>
-          </div>
-          <button onclick="sendTestNotification()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm">
-            Enviar
-          </button>
-        </div>
-        
-        <!-- Información sobre Notificaciones -->
-        <div class="border-t border-gray-700 pt-4 mt-4">
-          <h3 class="font-semibold mb-3">Push Notifications (OneSignal)</h3>
-          
-          <div id="push-status" class="p-3 bg-[#2a2736] rounded-lg text-sm">
-            <div id="onesignal-status" class="text-yellow-400 mb-2">⏳ Verificando estado...</div>
-            <div class="mt-3 space-y-2">
-              <button onclick="subscribeToOneSignal()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm w-full">
-                Suscribirse a Notificaciones Push
-              </button>
-              <button onclick="checkOneSignalStatus(true)" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm w-full">
-                Verificar Estado
-              </button>
-            </div>
-            <div class="mt-4 p-3 bg-[#2a2736] rounded-lg border border-gray-600">
-              <label class="block text-sm font-medium text-gray-300 mb-2">Clave REST API (recordatorios al guardar)</label>
-              <p class="text-xs text-gray-400 mb-2">Si los recordatorios no se envían a OneSignal, pega aquí tu clave. OneSignal → Settings → Keys &amp; IDs → REST API Key.</p>
-              <input type="password" id="onesignal-rest-api-key-input" placeholder="Pega la clave REST API" class="w-full px-3 py-2 rounded bg-[#1a1722] border border-gray-600 text-sm text-gray-200 placeholder-gray-500 mb-2"/>
-              <button onclick="saveOneSignalRestApiKey()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm w-full">Guardar clave</button>
-              <p id="onesignal-key-status" class="text-xs mt-2"></p>
-            </div>
-            <div class="text-xs text-gray-400 mt-3">
-              💡 OneSignal es 100% gratuito hasta 10,000 suscriptores
-            </div>
-            <div class="text-xs text-gray-500 mt-1">
-              ✅ Funciona incluso cuando el navegador está cerrado
-            </div>
-            <!-- Instrucciones para iOS -->
-            <div id="ios-instructions" class="hidden mt-4 p-4 bg-blue-900/30 rounded-lg border border-blue-700">
-              <div class="text-blue-300 font-semibold mb-2">📱 Para iOS (iPhone/iPad):</div>
-              <div class="text-xs text-blue-200 space-y-2">
-                <p>1. Abre esta página en Safari, Chrome o Edge</p>
-                <p>2. Toca el botón <strong>Compartir</strong> (cuadrado con flecha)</p>
-                <p>3. Selecciona <strong>"Agregar a pantalla de inicio"</strong></p>
-                <p>4. Abre la app desde la pantalla de inicio (no desde el navegador)</p>
-                <p>5. Luego podrás suscribirte a las notificaciones</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
         <div class="flex justify-between items-center mt-4">
           <button onclick="if(confirm('¿Estás seguro de que quieres eliminar el caché? Esto recargará la aplicación.')) { clearCacheAndUpdate(false); }" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm w-full">Eliminar caché</button>
         </div>

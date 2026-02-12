@@ -173,7 +173,7 @@ class OneSignalService {
         const initOptions = {
           appId: appId,
           notifyButton: {
-            enable: false, // No mostrar el botón de notificación por defecto
+            enable: true, // Mostrar botón para suscribirse a push (también en notificaciones.html)
           },
           allowLocalhostAsSecureOrigin: true, // Permitir localhost para desarrollo
         };

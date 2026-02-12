@@ -229,6 +229,16 @@
       document.getElementById('profit_display').textContent = profit.toFixed(2);
     }
 
+    // Obtener tipos de notificación desde Configuración → Notificaciones (preferencias globales)
+    function getNotificationPreferencesFromConfig() {
+      try {
+        const raw = localStorage.getItem('notification_preferences');
+        if (!raw) return [];
+        const prefs = JSON.parse(raw);
+        return Array.isArray(prefs.types) ? prefs.types : [];
+      } catch (e) { return []; }
+    }
+
     // Función para cargar los datos de la suscripción
     function loadSubscriptionData() {
       const params = new URLSearchParams(window.location.search);
@@ -256,14 +266,6 @@
         
         document.querySelector('input[name="category"]').value = 'Streaming';
         document.querySelector('select[name="list"]').value = 'personal';
-        
-        // Configurar notificaciones por defecto
-        document.querySelector('input[name="notification_1day"]').checked = false;
-        document.querySelector('input[name="notification_2days"]').checked = false;
-        document.querySelector('input[name="notification_sameday"]').checked = false;
-        document.querySelector('input[name="notification_custom"]').checked = false;
-        document.querySelector('input[name="notification_custom_days"]').value = '';
-        document.querySelector('input[name="notification_custom_days"]').disabled = true;
         
         // Limpiar campos de precio
         document.querySelector('input[name="original_price_usd"]').value = '';
@@ -374,130 +376,6 @@
           calculatePrices();
         }
 
-        // Si hay notificación personalizada por fecha
-        if (subscription.notifications) {
-          const customDateNotif = subscription.notifications.find(n => n.startsWith('customdate_'));
-          if (customDateNotif) {
-            const [, day, time] = customDateNotif.split('_');
-            const customDateCheckbox = document.querySelector('input[name="notification_custom_date"]');
-            const customDateInput = document.querySelector('input[name="custom_date"]');
-            const customTimeInput = document.querySelector('input[name="custom_time"]');
-            if (customDateCheckbox && customDateInput && customTimeInput) {
-              customDateCheckbox.checked = true;
-              // Setear la fecha al mes y año actual, pero con el día guardado
-              const now = new Date();
-              const year = now.getFullYear();
-              const month = (now.getMonth() + 1).toString().padStart(2, '0');
-              const dayStr = day.toString().padStart(2, '0');
-              customDateInput.value = `${year}-${month}-${dayStr}`;
-              customTimeInput.value = time;
-            }
-          }
-          
-          // Si hay notificación personalizada por fecha para prueba gratuita
-          const trialCustomDateNotif = subscription.notifications.find(n => n.startsWith('trial_customdate_'));
-          if (trialCustomDateNotif) {
-            const [, day, time] = trialCustomDateNotif.split('_');
-            const trialCustomDateCheckbox = document.querySelector('input[name="trial_notification_custom_date"]');
-            const trialCustomDateInput = document.querySelector('input[name="trial_custom_date"]');
-            const trialCustomTimeInput = document.querySelector('input[name="trial_custom_time"]');
-            if (trialCustomDateCheckbox && trialCustomDateInput && trialCustomTimeInput) {
-              trialCustomDateCheckbox.checked = true;
-              // Setear la fecha al mes y año actual, pero con el día guardado
-              const now = new Date();
-              const year = now.getFullYear();
-              const month = (now.getMonth() + 1).toString().padStart(2, '0');
-              const dayStr = day.toString().padStart(2, '0');
-              trialCustomDateInput.value = `${year}-${month}-${dayStr}`;
-              trialCustomTimeInput.value = time;
-            }
-          }
-        }
-
-        // Sincronizar notificaciones guardadas con los checkboxes y campos
-        if (subscription.notifications && Array.isArray(subscription.notifications)) {
-          subscription.notifications.forEach(notif => {
-            if (notif === '1day') {
-              const cb = document.querySelector('input[name="notification_1day"]');
-              if (cb) cb.checked = true;
-            } else if (notif === '2days') {
-              const cb = document.querySelector('input[name="notification_2days"]');
-              if (cb) cb.checked = true;
-            } else if (notif === 'sameday') {
-              const cb = document.querySelector('input[name="notification_sameday"]');
-              if (cb) cb.checked = true;
-            } else if (notif.startsWith('custom_')) {
-              const cb = document.querySelector('input[name="notification_custom"]');
-              const days = notif.split('_')[1];
-              if (cb) cb.checked = true;
-              const daysInput = document.querySelector('input[name="notification_custom_days"]');
-              if (daysInput) daysInput.value = days;
-            } else if (notif.startsWith('customdate_')) {
-              const cb = document.querySelector('input[name="notification_custom_date"]');
-              if (cb) {
-                cb.checked = true;
-                const parts = notif.split('_');
-                const dateInput = document.querySelector('input[name="custom_date"]');
-                const timeInput = document.querySelector('input[name="custom_time"]');
-                
-                // Nuevo formato: customdate_YYYY_MM_DD_HH:MM
-                if (parts.length >= 5) {
-                  const year = parts[1];
-                  const month = parts[2];
-                  const day = parts[3];
-                  const time = parts[4];
-                  
-                  // Formatear fecha para input type="date" (YYYY-MM-DD)
-                  const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                  if (dateInput) dateInput.value = dateStr;
-                  if (timeInput) timeInput.value = time;
-                }
-                // Formato legacy: customdate_DD_HH:MM
-                else if (parts.length === 3) {
-                  const day = parts[1];
-                  const time = parts[2];
-                  const now = new Date();
-                  const year = now.getFullYear();
-                  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-                  const dayStr = day.toString().padStart(2, '0');
-                  if (dateInput) dateInput.value = `${year}-${month}-${dayStr}`;
-                  if (timeInput) timeInput.value = time;
-                }
-              }
-            } else if (notif === 'trial_1day') {
-              const cb = document.querySelector('input[name="trial_notification_1day"]');
-              if (cb) cb.checked = true;
-            } else if (notif === 'trial_2days') {
-              const cb = document.querySelector('input[name="trial_notification_2days"]');
-              if (cb) cb.checked = true;
-            } else if (notif === 'trial_sameday') {
-              const cb = document.querySelector('input[name="trial_notification_sameday"]');
-              if (cb) cb.checked = true;
-            } else if (notif.startsWith('trial_custom_')) {
-              const cb = document.querySelector('input[name="trial_notification_custom"]');
-              const days = notif.split('_')[2];
-              if (cb) cb.checked = true;
-              const daysInput = document.querySelector('input[name="trial_notification_custom_days"]');
-              if (daysInput) daysInput.value = days;
-            } else if (notif.startsWith('trial_customdate_')) {
-              const cb = document.querySelector('input[name="trial_notification_custom_date"]');
-              if (cb) cb.checked = true;
-              const parts = notif.split('_');
-              if (parts.length === 3) {
-                const day = parts[1];
-                const time = parts[2];
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = (now.getMonth() + 1).toString().padStart(2, '0');
-                const dayStr = day.toString().padStart(2, '0');
-                const dateInput = document.querySelector('input[name="trial_custom_date"]');
-                const timeInput = document.querySelector('input[name="trial_custom_time"]');
-                if (dateInput) dateInput.value = `${year}-${month}-${dayStr}`;
-                if (timeInput) timeInput.value = time;
-              }
-            }
-          });
-        }
       }
     }
 
@@ -622,49 +500,9 @@
 
       console.log('Validación de campos exitosa');
 
-      // Obtener notificaciones seleccionadas con sus horas
-      const notifications = [];
-      // Buscar todos los checkboxes de notificaciones estándar y personalizadas
-      document.querySelectorAll('input[type="checkbox"][name^="notification_"]').forEach(checkbox => {
-        if (checkbox.checked) {
-          if (checkbox.name === 'notification_custom') {
-            const customDays = document.querySelector('input[name="notification_custom_days"]');
-            const customTime = document.querySelector('input[name="notification_custom_time"]');
-            if (customDays && customDays.value) {
-              const time = customTime && customTime.value ? customTime.value : '09:00';
-              notifications.push(`custom_${customDays.value}_${time}`);
-            }
-          } else if (checkbox.name === 'notification_custom_date') {
-            const customDateInput = document.querySelector('input[name="custom_date"]');
-            const customTimeInput = document.querySelector('input[name="custom_time"]');
-            if (customDateInput && customDateInput.value && customTimeInput && customTimeInput.value) {
-              // Usar métodos locales para evitar problemas de zona horaria
-              const dateStr = customDateInput.value; // Formato: YYYY-MM-DD
-              const [year, month, day] = dateStr.split('-').map(Number);
-              let [hour, minute] = customTimeInput.value.split(':');
-              hour = hour.padStart(2, '0');
-              minute = minute.padStart(2, '0');
-              const time = `${hour}:${minute}`;
-              const dayStr = String(day).padStart(2, '0');
-              // Guardar también año y mes para cálculo correcto
-              notifications.push(`customdate_${year}_${month}_${dayStr}_${time}`);
-            }
-          } else if (checkbox.name === 'notification_1day') {
-            const timeInput = document.querySelector('input[name="notification_1day_time"]');
-            const time = timeInput && timeInput.value ? timeInput.value : '09:00';
-            notifications.push(`1day_${time}`);
-          } else if (checkbox.name === 'notification_2days') {
-            const timeInput = document.querySelector('input[name="notification_2days_time"]');
-            const time = timeInput && timeInput.value ? timeInput.value : '09:00';
-            notifications.push(`2days_${time}`);
-          } else if (checkbox.name === 'notification_sameday') {
-            const timeInput = document.querySelector('input[name="notification_sameday_time"]');
-            const time = timeInput && timeInput.value ? timeInput.value : '09:00';
-            notifications.push(`sameday_${time}`);
-          }
-        }
-      });
-      console.log('Notificaciones a guardar (reforzado):', notifications);
+      // Notificaciones: se usan las preferencias globales de Configuración → Notificaciones
+      const notifications = getNotificationPreferencesFromConfig();
+      console.log('Notificaciones (desde Configuración):', notifications);
 
       // Crear objeto base de suscripción
       const subscriptionData = {
@@ -820,111 +658,6 @@
       }
     }
 
-    // Función para agregar event listeners a las notificaciones
-    function addNotificationEventListeners() {
-      // Verificar si la sección de notificaciones está visible
-      const sections = document.querySelectorAll('section');
-      let notifSectionVisible = false;
-      
-      sections.forEach(section => {
-        if (section.querySelector('#notificaciones-container') && !section.classList.contains('hidden')) {
-          notifSectionVisible = true;
-        }
-      });
-      
-      if (!notifSectionVisible) {
-        console.log('Sección de notificaciones está oculta, no agregando event listeners');
-        return;
-      }
-      
-      // Buscar todos los checkboxes de notificaciones por nombre
-      const notificationNames = [
-        'notification_1day',
-        'notification_2days', 
-        'notification_sameday',
-        'notification_custom_date',
-        'notification_custom'
-      ];
-      
-      notificationNames.forEach(name => {
-        const checkbox = document.querySelector(`input[name="${name}"]`);
-        if (checkbox) {
-          // Remover event listeners existentes para evitar duplicados
-          checkbox.removeEventListener('change', updateNotificationsPosition);
-          // Agregar nuevo event listener
-          checkbox.addEventListener('change', updateNotificationsPosition);
-          console.log(`Event listener agregado a ${name}`);
-        } else {
-          console.log(`Checkbox ${name} no encontrado`);
-        }
-      });
-    }
-
-    // Lógica para mover notificaciones activas arriba y las inactivas al dropdown
-    function updateNotificationsPosition() {
-      console.log('Ejecutando updateNotificationsPosition');
-      
-      const activeContainer = document.getElementById('activeNotificationsContainer');
-      const additionalContainer = document.getElementById('additionalNotifications');
-      
-      if (!activeContainer || !additionalContainer) {
-        console.log('Contenedores no encontrados');
-        return;
-      }
-      
-      // Verificar si la sección de notificaciones está visible
-      const sections = document.querySelectorAll('section');
-      let notifSectionVisible = false;
-      
-      sections.forEach(section => {
-        if (section.querySelector('#notificaciones-container') && !section.classList.contains('hidden')) {
-          notifSectionVisible = true;
-        }
-      });
-      
-      if (!notifSectionVisible) {
-        console.log('Sección de notificaciones está oculta, no reorganizando');
-        return;
-      }
-      
-      // Buscar todas las notificaciones por sus IDs específicos
-      const notificationElements = [
-        { id: 'notif-1day', name: 'notification_1day' },
-        { id: 'notif-2days', name: 'notification_2days' },
-        { id: 'notif-sameday', name: 'notification_sameday' },
-        { id: 'customDateNotificationDropdown', name: 'notification_custom_date' },
-        { id: 'notif-custom', name: 'notification_custom' }
-      ];
-      
-      notificationElements.forEach(notification => {
-        const element = document.getElementById(notification.id);
-        if (!element) {
-          console.log(`Elemento ${notification.id} no encontrado`);
-          return;
-        }
-        
-        const checkbox = element.querySelector(`input[name="${notification.name}"]`);
-        if (!checkbox) {
-          console.log(`Checkbox ${notification.name} no encontrado en ${notification.id}`);
-          return;
-        }
-        
-        if (checkbox.checked) {
-          // Mover al contenedor activo si no está ahí
-          if (!activeContainer.contains(element)) {
-            console.log(`Moviendo ${notification.name} al contenedor activo`);
-            activeContainer.appendChild(element);
-          }
-        } else {
-          // Mover al contenedor adicional si no está ahí
-          if (!additionalContainer.contains(element)) {
-            console.log(`Moviendo ${notification.name} al contenedor adicional`);
-            additionalContainer.appendChild(element);
-          }
-        }
-      });
-    }
-
     // Función para cargar versión
     function cargarVersion() {
       const versionElement = document.getElementById('app-version');
@@ -966,25 +699,6 @@
         console.error('Botón de guardar no encontrado');
       }
 
-      // Manejar el botón de agregar notificación
-      let addNotificationBtn = document.getElementById('addNotificationBtn');
-      let additionalNotifications = document.getElementById('additionalNotifications');
-      
-      if (addNotificationBtn && additionalNotifications) {
-        addNotificationBtn.addEventListener('click', () => {
-          additionalNotifications.classList.toggle('hidden');
-          addNotificationBtn.textContent = additionalNotifications.classList.contains('hidden') 
-            ? '+ Agregar notificación' 
-            : '- Ocultar notificaciones';
-        });
-      }
-      
-      // Inicializar y escuchar cambios
-      updateNotificationsPosition();
-      
-      // Agregar event listeners iniciales
-      addNotificationEventListeners();
-
       // Manejar la visibilidad de la sección de prueba gratuita
       const freeTrialCheckbox = document.querySelector('input[name="free_trial"]');
       const freeTrialSection = document.getElementById('freeTrialSection');
@@ -995,57 +709,39 @@
       function findSections() {
         const sections = document.querySelectorAll('section');
         let typeSection = null;
-        let notifSection = null;
         let pricesSection = null;
         
         sections.forEach(section => {
           if (section.querySelector('select[name="list"]')) {
             typeSection = section;
           }
-          if (section.querySelector('#notificaciones-container')) {
-            notifSection = section;
-          }
           if (section.querySelector('input[name="original_price_usd"]')) {
             pricesSection = section;
           }
         });
         
-        return { typeSection, notifSection, pricesSection };
+        return { typeSection, pricesSection };
       }
       
-      const { typeSection, notifSection, pricesSection } = findSections();
+      const { typeSection, pricesSection } = findSections();
       
       if (freeTrialCheckbox && freeTrialSection && regularSubscriptionSection) {
         freeTrialCheckbox.addEventListener('change', function() {
           if (this.checked) {
             freeTrialSection.classList.remove('hidden');
             regularSubscriptionSection.classList.add('hidden');
-            if (typeSection) typeSection.classList.remove('hidden'); // Mostrar la sección de tipo
-            if (notifSection) notifSection.classList.add('hidden');
+            if (typeSection) typeSection.classList.remove('hidden');
             if (sharedSubscriptionSection) sharedSubscriptionSection.classList.add('hidden');
-            // Ocultar también la sección de precios
             if (pricesSection) pricesSection.classList.add('hidden');
             
-            // Seleccionar "Prueba gratuita" por defecto
             const tipoSelect = document.querySelector('select[name="list"]');
-            if (tipoSelect) {
-              tipoSelect.value = 'prueba_gratuita';
-            }
-            
-            // Manejar notificaciones de prueba gratuita
-            handleTrialNotifications();
+            if (tipoSelect) tipoSelect.value = 'prueba_gratuita';
           } else {
             freeTrialSection.classList.add('hidden');
             regularSubscriptionSection.classList.remove('hidden');
             if (typeSection) typeSection.classList.remove('hidden');
-            if (notifSection) notifSection.classList.remove('hidden');
-            if (sharedSubscriptionSection) sharedSubscriptionSection.classList.add('hidden'); // Mantener oculto hasta que se seleccione "compartido"
-            // Mostrar también la sección de precios
+            if (sharedSubscriptionSection) sharedSubscriptionSection.classList.add('hidden');
             if (pricesSection) pricesSection.classList.remove('hidden');
-            
-            // Reorganizar notificaciones después de mostrar la sección
-            updateNotificationsPosition();
-            addNotificationEventListeners();
           }
         });
       }
@@ -1054,32 +750,18 @@
       if (freeTrialCheckbox.checked) {
         freeTrialSection.classList.remove('hidden');
         regularSubscriptionSection.classList.add('hidden');
-        if (typeSection) typeSection.classList.remove('hidden'); // Mostrar la sección de tipo
-        if (notifSection) notifSection.classList.add('hidden');
+        if (typeSection) typeSection.classList.remove('hidden');
         if (sharedSubscriptionSection) sharedSubscriptionSection.classList.add('hidden');
-        // Ocultar también la sección de precios
         if (pricesSection) pricesSection.classList.add('hidden');
         
-        // Seleccionar "Prueba gratuita" por defecto
         const tipoSelect = document.querySelector('select[name="list"]');
-        if (tipoSelect) {
-          tipoSelect.value = 'prueba_gratuita';
-        }
-        
-        // Manejar notificaciones de prueba gratuita
-        handleTrialNotifications();
+        if (tipoSelect) tipoSelect.value = 'prueba_gratuita';
       } else {
         freeTrialSection.classList.add('hidden');
         regularSubscriptionSection.classList.remove('hidden');
         if (typeSection) typeSection.classList.remove('hidden');
-        if (notifSection) notifSection.classList.remove('hidden');
-        if (sharedSubscriptionSection) sharedSubscriptionSection.classList.add('hidden'); // Mantener oculto hasta que se seleccione "compartido"
-        // Mostrar también la sección de precios
+        if (sharedSubscriptionSection) sharedSubscriptionSection.classList.add('hidden');
         if (pricesSection) pricesSection.classList.remove('hidden');
-        
-        // Reorganizar notificaciones después de mostrar la sección
-        updateNotificationsPosition();
-        addNotificationEventListeners();
       }
 
       // Agregar event listeners para los campos de precio
@@ -1298,101 +980,6 @@
       document.getElementById('delete-logo-btn').style.display = 'none';
     }
 
-    // Función para manejar las notificaciones de prueba gratuita
-    function handleTrialNotifications() {
-      console.log('Manejando notificaciones de prueba gratuita');
-      
-      const addTrialNotificationBtn = document.getElementById('addTrialNotificationBtn');
-      const additionalTrialNotifications = document.getElementById('trial-additionalNotifications');
-      
-      if (addTrialNotificationBtn && additionalTrialNotifications) {
-        addTrialNotificationBtn.addEventListener('click', () => {
-          additionalTrialNotifications.classList.toggle('hidden');
-          addTrialNotificationBtn.textContent = additionalTrialNotifications.classList.contains('hidden') 
-            ? '+ Agregar notificación' 
-            : '- Ocultar notificaciones';
-        });
-      }
-      
-      // Ejecutar la reorganización de notificaciones de prueba gratuita
-      updateTrialNotificationsPosition();
-      addTrialNotificationEventListeners();
-    }
-
-    // Lógica para mover notificaciones de prueba gratuita activas arriba y las inactivas al dropdown
-    function updateTrialNotificationsPosition() {
-      console.log('Ejecutando updateTrialNotificationsPosition');
-      
-      const activeContainer = document.getElementById('trial-activeNotificationsContainer');
-      const additionalContainer = document.getElementById('trial-additionalNotifications');
-      
-      if (!activeContainer || !additionalContainer) {
-        console.log('Contenedores de prueba gratuita no encontrados');
-        return;
-      }
-      
-      // Buscar todas las notificaciones de prueba gratuita por sus IDs específicos
-      const trialNotificationElements = [
-        { id: 'trial-notif-1day', name: 'trial_notification_1day' },
-        { id: 'trial-notif-2days', name: 'trial_notification_2days' },
-        { id: 'trial-notif-sameday', name: 'trial_notification_sameday' },
-        { id: 'trial-customDateNotificationDropdown', name: 'trial_notification_custom_date' },
-        { id: 'trial-notif-custom', name: 'trial_notification_custom' }
-      ];
-      
-      trialNotificationElements.forEach(notification => {
-        const element = document.getElementById(notification.id);
-        if (!element) {
-          console.log(`Elemento de prueba gratuita ${notification.id} no encontrado`);
-          return;
-        }
-        
-        const checkbox = element.querySelector(`input[name="${notification.name}"]`);
-        if (!checkbox) {
-          console.log(`Checkbox de prueba gratuita ${notification.name} no encontrado en ${notification.id}`);
-          return;
-        }
-        
-        if (checkbox.checked) {
-          // Mover al contenedor activo si no está ahí
-          if (!activeContainer.contains(element)) {
-            console.log(`Moviendo notificación de prueba gratuita ${notification.name} al contenedor activo`);
-            activeContainer.appendChild(element);
-          }
-        } else {
-          // Mover al contenedor adicional si no está ahí
-          if (!additionalContainer.contains(element)) {
-            console.log(`Moviendo notificación de prueba gratuita ${notification.name} al contenedor adicional`);
-            additionalContainer.appendChild(element);
-          }
-        }
-      });
-    }
-
-    // Función para agregar event listeners a las notificaciones de prueba gratuita
-    function addTrialNotificationEventListeners() {
-      // Buscar todos los checkboxes de notificaciones de prueba gratuita por nombre
-      const trialNotificationNames = [
-        'trial_notification_1day',
-        'trial_notification_2days', 
-        'trial_notification_sameday',
-        'trial_notification_custom_date',
-        'trial_notification_custom'
-      ];
-      
-      trialNotificationNames.forEach(name => {
-        const checkbox = document.querySelector(`input[name="${name}"]`);
-        if (checkbox) {
-          // Remover event listeners existentes para evitar duplicados
-          checkbox.removeEventListener('change', updateTrialNotificationsPosition);
-          // Agregar nuevo event listener
-          checkbox.addEventListener('change', updateTrialNotificationsPosition);
-          console.log(`Event listener agregado a notificación de prueba gratuita ${name}`);
-        } else {
-          console.log(`Checkbox de prueba gratuita ${name} no encontrado`);
-        }
-      });
-    }
   </script>
 </head>
 <body class="bg-[#0c0a17] text-white font-sans min-h-screen p-5">
@@ -1503,55 +1090,6 @@
             <input type="date" name="trial_end_date" class="bg-[#3f3f46] rounded-md px-3 py-1 text-white text-base font-normal" />
           </div>
         </div>
-        <div class="flex justify-between items-center px-4 py-3">
-          <div class="text-white text-base font-normal">Notificar antes de fin</div>
-          <div class="flex flex-col w-full" id="trial-notificaciones-container">
-            <div id="trial-activeNotificationsContainer"></div>
-            <button type="button" id="addTrialNotificationBtn" class="text-[#6b6b7b] text-sm hover:text-white mb-2 text-right w-full">
-              + Agregar notificación
-            </button>
-            <div id="trial-additionalNotifications" class="hidden flex-col items-end space-y-2 w-full">
-              <div class="flex flex-row items-center w-full mb-2" id="trial-notif-1day">
-                <input type="checkbox" name="trial_notification_1day" class="notification-checkbox mt-1" />
-                <div class="flex flex-col flex-1 ml-2">
-                  <span class="text-[#6b6b7b] text-base text-right">1 día antes</span>
-                  <input type="time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-sm w-1/2 self-end" value="09:00" />
-                </div>
-              </div>
-              <div class="flex flex-row items-center w-full mb-2" id="trial-notif-2days">
-                <input type="checkbox" name="trial_notification_2days" class="notification-checkbox mt-1" />
-                <div class="flex flex-col flex-1 ml-2">
-                  <span class="text-[#6b6b7b] text-base text-right">2 días antes</span>
-                  <input type="time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-sm w-1/2 self-end" value="09:00" />
-                </div>
-              </div>
-              <div class="flex flex-row items-center w-full mb-2" id="trial-notif-sameday">
-                <input type="checkbox" name="trial_notification_sameday" class="notification-checkbox mt-1" />
-                <div class="flex flex-col flex-1 ml-2">
-                  <span class="text-[#6b6b7b] text-base text-right">El mismo día</span>
-                  <input type="time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-sm w-1/2 self-end" value="09:00" />
-                </div>
-              </div>
-              <div class="flex flex-row items-center w-full mb-2 mt-2" id="trial-customDateNotificationDropdown">
-                <input type="checkbox" name="trial_notification_custom_date" class="notification-checkbox mt-1" />
-                <div class="flex flex-col flex-1 space-y-2">
-                  <span class="text-[#6b6b7b] text-base text-right">Personalizado por fecha</span>
-                  <input type="date" name="trial_custom_date" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-sm w-1/2 self-end" />
-                  <input type="time" name="trial_custom_time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-sm w-1/2 self-end" value="09:00" />
-                  <span class="text-xs text-[#6b6b7b]">Se repetirá cada mes en el día y hora elegidos</span>
-                </div>
-              </div>
-              <div class="flex flex-row items-center w-full mb-2" id="trial-notif-custom">
-                <input type="checkbox" name="trial_notification_custom" class="notification-checkbox mt-1" />
-                <div class="flex flex-col flex-1">
-                  <span class="text-[#6b6b7b] text-base text-right">Personalizado</span>
-                  <input type="number" name="trial_notification_custom_days" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-sm w-16 mb-2" placeholder="días" min="1" max="30" disabled />
-                  <input type="time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-sm w-1/2 mb-2 self-end" value="09:00" disabled />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -1590,85 +1128,6 @@
         <div class="text-white text-base font-normal">Categoría</div>
         <div class="flex items-center space-x-2">
           <input type="text" name="category" class="text-[#6b6b7b] text-base font-normal bg-transparent border-none" />
-        </div>
-      </div>
-      <div class="px-4 py-3">
-        <div class="flex justify-between items-center mb-3">
-          <div class="text-white text-base font-normal">Notificaciones de Recordatorio</div>
-          <span class="text-xs text-[#6b6b7b]">Funcionan sin abrir la app</span>
-        </div>
-        <div class="flex flex-col w-full space-y-3" id="notificaciones-container">
-          <div id="activeNotificationsContainer" class="space-y-2"></div>
-          <button type="button" id="addNotificationBtn" class="text-[#6b6b7b] text-sm hover:text-white text-left w-full flex items-center">
-            <i class="fas fa-plus-circle mr-2"></i>
-            Agregar recordatorio
-          </button>
-          <div id="additionalNotifications" class="hidden flex-col space-y-3 w-full">
-            <div class="bg-[#2a2736] rounded-lg p-3 flex items-center space-x-3" id="notif-1day">
-              <input type="checkbox" name="notification_1day" class="notification-checkbox flex-shrink-0" />
-              <div class="flex-1">
-                <div class="text-white text-sm font-medium mb-1">1 día antes del pago</div>
-                <div class="flex items-center space-x-2">
-                  <i class="fas fa-clock text-[#6b6b7b] text-xs"></i>
-                  <input type="time" name="notification_1day_time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-xs" value="09:00" />
-                </div>
-              </div>
-            </div>
-            <div class="bg-[#2a2736] rounded-lg p-3 flex items-center space-x-3" id="notif-2days">
-              <input type="checkbox" name="notification_2days" class="notification-checkbox flex-shrink-0" />
-              <div class="flex-1">
-                <div class="text-white text-sm font-medium mb-1">2 días antes del pago</div>
-                <div class="flex items-center space-x-2">
-                  <i class="fas fa-clock text-[#6b6b7b] text-xs"></i>
-                  <input type="time" name="notification_2days_time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-xs" value="09:00" />
-                </div>
-              </div>
-            </div>
-            <div class="bg-[#2a2736] rounded-lg p-3 flex items-center space-x-3" id="notif-sameday">
-              <input type="checkbox" name="notification_sameday" class="notification-checkbox flex-shrink-0" />
-              <div class="flex-1">
-                <div class="text-white text-sm font-medium mb-1">El mismo día del pago</div>
-                <div class="flex items-center space-x-2">
-                  <i class="fas fa-clock text-[#6b6b7b] text-xs"></i>
-                  <input type="time" name="notification_sameday_time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-xs" value="09:00" />
-                </div>
-              </div>
-            </div>
-            <div class="bg-[#2a2736] rounded-lg p-3 flex items-start space-x-3" id="customDateNotificationDropdown">
-              <input type="checkbox" name="notification_custom_date" class="notification-checkbox flex-shrink-0 mt-1" />
-              <div class="flex-1">
-                <div class="text-white text-sm font-medium mb-2">Fecha y hora personalizada</div>
-                <div class="space-y-2">
-                  <div class="flex items-center space-x-2">
-                    <i class="fas fa-calendar text-[#6b6b7b] text-xs"></i>
-                    <input type="date" name="custom_date" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-xs flex-1" />
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <i class="fas fa-clock text-[#6b6b7b] text-xs"></i>
-                    <input type="time" name="custom_time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-xs flex-1" value="09:00" />
-                  </div>
-                  <span class="text-xs text-[#6b6b7b] block">Se repetirá cada mes en el día y hora elegidos</span>
-                </div>
-              </div>
-            </div>
-            <div class="bg-[#2a2736] rounded-lg p-3 flex items-start space-x-3" id="notif-custom">
-              <input type="checkbox" name="notification_custom" class="notification-checkbox flex-shrink-0 mt-1" />
-              <div class="flex-1">
-                <div class="text-white text-sm font-medium mb-2">Días personalizados antes</div>
-                <div class="space-y-2">
-                  <div class="flex items-center space-x-2">
-                    <i class="fas fa-calendar-day text-[#6b6b7b] text-xs"></i>
-                    <input type="number" name="notification_custom_days" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-xs w-20" placeholder="días" min="1" max="30" disabled />
-                    <span class="text-xs text-[#6b6b7b]">días antes</span>
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <i class="fas fa-clock text-[#6b6b7b] text-xs"></i>
-                    <input type="time" name="notification_custom_time" class="bg-[#3f3f46] rounded-md px-2 py-1 text-white text-xs flex-1" value="09:00" disabled />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
