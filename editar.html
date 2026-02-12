@@ -24,11 +24,10 @@
   <script src="onesignal-config-local.js" onerror="console.log('onesignal-config-local.js no encontrado (esto es normal)')"></script>
   <script src="onesignal-service.js"></script>
   <script src="onesignal-session.js"></script>
-  <script src="onesignal-rest-api.js"></script>
   <script src="version.js"></script>
-  
-  <!-- OneSignal SDK -->
+  <!-- OneSignal SDK (debe cargar antes que onesignal-notifications.js) -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"></script>
+  <script src="onesignal-notifications.js"></script>
   <style>
     body, html {
       overflow-x: hidden !important;
@@ -739,63 +738,21 @@
         console.log('Guardado en localStorage:', localStorage.getItem('subscriptions'));
       }
 
-      // Intentar reprogramar notificaciones en segundo plano (no bloquear el guardado)
-      // Programar notificaciones con OneSignal y localmente
-      if (oneSignalService) {
+      // Enviar recordatorios a OneSignal (solo esta suscripción, directo a la API)
+      let notifResult = { sent: 0, failed: 0, error: null };
+      if (typeof OneSignalNotifications !== 'undefined' && subscriptionData.notifications && subscriptionData.notifications.length > 0 && subscriptionData.nextPayment) {
         try {
-          console.log('📬 Iniciando programación de notificaciones con OneSignal...');
-          const subscriptions = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-          let totalScheduled = 0;
-          
-          // Programar notificaciones con OneSignal
-          for (const subscription of subscriptions) {
-            if (subscription.notifications && subscription.notifications.length > 0 && subscription.nextPayment) {
-              const count = await oneSignalService.scheduleSubscriptionNotifications(subscription);
-              totalScheduled += count;
-            }
-          }
-          
-          if (totalScheduled > 0) {
-            console.log(`✅ ${totalScheduled} notificaciones programadas con OneSignal`);
-            console.log('💡 Las notificaciones se enviarán automáticamente cuando llegue la fecha');
-          } else {
-            console.warn('⚠️ No se programaron notificaciones. Verifica que las suscripciones tengan notificaciones y fechas válidas.');
-          }
-        } catch (error) {
-          console.error('❌ Error al programar notificaciones con OneSignal:', error);
-          console.error('Detalles:', error.message, error.stack);
+          notifResult = await OneSignalNotifications.scheduleRemindersForSubscription(subscriptionData);
+        } catch (err) {
+          notifResult.error = err.message || String(err);
+          console.error('Error OneSignal:', err);
         }
-      } else {
-        console.warn('⚠️ oneSignalService no disponible');
       }
 
-      // Enviar notificaciones a OneSignal ANTES de redirigir (aparecen en Dashboard > Messages)
-      let restResult = { sent: 0, pending: 0 };
-      try {
-        if (typeof oneSignalRESTService !== 'undefined') {
-          oneSignalRESTService.updateRestApiKey();
-          const restApiKey = ONESIGNAL_CONFIG?.restApiKey || oneSignalRESTService.restApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('onesignal_rest_api_key') : null);
-          if (restApiKey && restApiKey.trim()) {
-            console.log('📬 Enviando recordatorios a OneSignal...');
-            restResult = await oneSignalRESTService.scheduleAllPendingNotifications();
-            if (typeof restResult === 'number') restResult = { sent: restResult, pending: restResult };
-            if (restResult.sent > 0) {
-              console.log(`✅ ${restResult.sent} notificación(es) enviada(s) a OneSignal. Dashboard: Messages > History.`);
-            }
-          } else {
-            console.warn('⚠️ REST API Key no configurado.');
-          }
-        }
-      } catch (err) {
-        console.error('❌ Error al enviar a OneSignal:', err);
-      }
-
-      // Mensaje y redirección: solo avisar de OneSignal si había pendientes y no se envió ninguno
-      if (restResult.sent > 0) {
-        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + restResult.sent + ' recordatorio(s) enviados a OneSignal. Verás la notificación en OneSignal → Messages. Te llegará al teléfono a la hora programada.');
-      } else if (restResult.pending > 0) {
-        const motivo = (restResult.error && restResult.error.trim()) ? ('\nMotivo: ' + restResult.error) : '';
-        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + ' No se pudieron enviar ' + restResult.pending + ' recordatorio(s) a OneSignal.' + motivo + '\n\nSi falta la clave: Configuración → Push Notifications → pega Clave REST API (OneSignal → Keys & IDs) y Guardar clave.');
+      if (notifResult.sent > 0) {
+        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + notifResult.sent + ' recordatorio(s) enviados a OneSignal. Te llegarán al teléfono a la hora programada.');
+      } else if (notifResult.error) {
+        alert((isNew ? 'Suscripción creada. ' : 'Suscripción actualizada. ') + '\n\nRecordatorios no enviados: ' + notifResult.error);
       } else {
         alert(isNew ? 'Suscripción creada' : 'Suscripción actualizada');
       }

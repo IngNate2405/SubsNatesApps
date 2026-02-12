@@ -984,9 +984,6 @@
         statusEl.className = 'text-xs mt-2 text-green-400';
         input.value = '';
         input.placeholder = 'Clave guardada (vuelve a pegar para cambiar)';
-        if (typeof oneSignalRESTService !== 'undefined') {
-          oneSignalRESTService.updateRestApiKey();
-        }
         showNotification('✅ Clave guardada', 'Los recordatorios se enviarán a OneSignal al guardar.', 'success');
       } catch (e) {
         statusEl.textContent = '❌ No se pudo guardar: ' + (e.message || 'error');
