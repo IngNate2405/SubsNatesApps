@@ -986,6 +986,13 @@
       cargarVersion();
       loadSubscriptionData();
 
+      // Inicializar OneSignal en esta página para que al guardar tengamos Player ID y se envíen los recordatorios
+      if (typeof window.oneSignalSession !== 'undefined' && typeof ONESIGNAL_CONFIG !== 'undefined' && ONESIGNAL_CONFIG.appId) {
+        window.oneSignalSession.initializeOnce(ONESIGNAL_CONFIG.appId, ONESIGNAL_CONFIG.safariWebId).then(() => {
+          console.log('✅ OneSignal listo en página de edición (recordatorios se enviarán al guardar)');
+        }).catch(() => {});
+      }
+
       // Botón de guardar
       const saveButton = document.getElementById('saveButton');
       if (saveButton) {

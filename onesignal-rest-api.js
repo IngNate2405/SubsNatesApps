@@ -312,77 +312,37 @@ class OneSignalRESTService {
       return isFuture;
     });
 
-    console.log(`📤 Notificaciones a enviar: ${toSend.length}`);
+    console.log(`📤 Diagnóstico: Clave REST ${this.restApiKey ? '✅ sí' : '❌ no'}. Pendientes a enviar: ${toSend.length}`);
 
     if (toSend.length === 0) {
       console.log('ℹ️ No hay notificaciones programadas para enviar');
       return 0;
     }
 
-    // Obtener el Player ID del usuario actual de OneSignal
-    let playerId = null;
-    try {
-      if (typeof OneSignal === 'undefined') {
-        console.warn('⚠️ OneSignal SDK no está disponible');
-      } else {
-        console.log('🔍 Intentando obtener Player ID...');
-        
-        // Método 1: OneSignal v16 (más reciente)
-        if (OneSignal.User && OneSignal.User.PushSubscription) {
-          try {
-            playerId = await OneSignal.User.PushSubscription.id;
-            console.log('✅ Player ID obtenido con OneSignal.User.PushSubscription.id');
-          } catch (e) {
-            console.log('⚠️ Error con OneSignal.User.PushSubscription.id:', e.message);
-          }
-        }
-        
-        // Método 2: Alternativo para versiones anteriores
-        if (!playerId && OneSignal.getUserId) {
-          try {
-            playerId = await OneSignal.getUserId();
-            console.log('✅ Player ID obtenido con OneSignal.getUserId()');
-          } catch (e) {
-            console.log('⚠️ Error con OneSignal.getUserId():', e.message);
-          }
-        }
-        
-        // Método 3: Verificar si hay suscripción activa
-        if (!playerId && OneSignal.isPushNotificationsEnabled) {
-          try {
-            const isEnabled = await OneSignal.isPushNotificationsEnabled();
-            if (isEnabled) {
-              console.log('✅ Push notifications están habilitadas');
-              // Intentar obtener de otra forma
-              if (OneSignal.getSubscription) {
-                const subscription = await OneSignal.getSubscription();
-                if (subscription && subscription.id) {
-                  playerId = subscription.id;
-                  console.log('✅ Player ID obtenido con OneSignal.getSubscription()');
-                }
-              }
-            } else {
-              console.warn('⚠️ Push notifications no están habilitadas');
-            }
-          } catch (e) {
-            console.log('⚠️ Error verificando push notifications:', e.message);
-          }
-        }
-        
-        if (playerId) {
-          console.log(`✅ Player ID obtenido: ${playerId.substring(0, 8)}... (longitud: ${playerId.length})`);
-          // Validar formato del Player ID (debe ser un UUID)
-          if (playerId.length < 30) {
-            console.warn('⚠️ Player ID parece tener un formato inusual');
-          }
-        } else {
-          console.error('❌ No se pudo obtener Player ID con ningún método');
-          console.error('💡 Asegúrate de estar suscrito a OneSignal en la página de configuración');
-        }
+    // Obtener el Player ID del usuario actual de OneSignal (con reintento si OneSignal acaba de inicializarse)
+    const getPlayerId = async () => {
+      if (typeof OneSignal === 'undefined') return null;
+      if (OneSignal.User && OneSignal.User.PushSubscription) {
+        try {
+          return await OneSignal.User.PushSubscription.id || null;
+        } catch (e) { return null; }
       }
-    } catch (e) {
-      console.error('❌ Error al obtener Player ID:', e);
-      console.error('Stack:', e.stack);
+      if (OneSignal.getUserId) {
+        try { return await OneSignal.getUserId() || null; } catch (e) { return null; }
+      }
+      return null;
+    };
+
+    let playerId = await getPlayerId();
+    if (!playerId) {
+      console.log('⏳ Player ID no disponible aún, esperando 2 s (OneSignal puede estar inicializando)...');
+      await new Promise(r => setTimeout(r, 2000));
+      playerId = await getPlayerId();
+    }
+    if (playerId) {
+      console.log(`✅ Player ID: ${playerId.substring(0, 8)}... (enviaremos a este dispositivo)`);
+    } else {
+      console.error('❌ No se pudo obtener Player ID. Abre Configuración → Notificaciones y suscríbete, luego vuelve a guardar.');
     }
 
     let sentCount = 0;
