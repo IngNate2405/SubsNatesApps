@@ -117,6 +117,17 @@
     <!-- OneSignal: suscripción y clave REST -->
     <div class="bg-[#1B1930] rounded-xl p-6 mb-6">
       <h2 class="text-lg font-bold mb-4">Push (OneSignal)</h2>
+
+      <!-- Probar ahora: notificación en 1 min (destacado) -->
+      <div class="mb-6 p-4 rounded-xl bg-amber-900/30 border border-amber-600/50">
+        <h3 class="font-semibold text-amber-200 mb-1">Probar si funciona</h3>
+        <p class="text-sm text-amber-100/90 mb-3">Te llegará una notificación en 1 minuto. Antes: suscríbete abajo y guarda la clave REST.</p>
+        <button type="button" onclick="sendTestNotification1Min()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium px-4 py-3 rounded-lg text-sm">
+          Enviar notificación en 1 min
+        </button>
+        <p id="test-1min-status" class="text-xs mt-2 min-h-[1.25rem]"></p>
+      </div>
+
       <div id="onesignal-status" class="text-yellow-400 mb-3 text-sm">Verificando...</div>
       <div class="flex flex-col gap-2">
         <button type="button" onclick="subscribeToOneSignal()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm w-full">
@@ -125,11 +136,7 @@
         <button type="button" onclick="checkOneSignalStatus()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm w-full">
           Verificar estado
         </button>
-        <button type="button" onclick="sendTestNotification1Min()" class="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg text-sm w-full">
-          Enviar notificación en 1 min (probar)
-        </button>
       </div>
-      <p id="test-1min-status" class="text-xs mt-2 text-gray-400"></p>
       <div class="mt-4 p-3 bg-[#2a2736] rounded-lg border border-gray-600">
         <label class="block text-sm font-medium text-gray-300 mb-2">Clave REST API (recordatorios al guardar)</label>
         <p class="text-xs text-gray-400 mb-2">OneSignal → Settings → Keys &amp; IDs → REST API Key.</p>
@@ -318,24 +325,31 @@
 
     async function sendTestNotification1Min() {
       const statusEl = document.getElementById('test-1min-status');
+      if (!statusEl) return;
       statusEl.textContent = 'Enviando...';
       statusEl.className = 'text-xs mt-2 text-yellow-400';
       if (typeof OneSignalNotifications === 'undefined' || !OneSignalNotifications.sendTestNotificationIn1Min) {
-        statusEl.textContent = 'No se pudo cargar el módulo de notificaciones. Recarga la página.';
+        statusEl.textContent = 'Recarga la página y vuelve a intentar.';
         statusEl.className = 'text-xs mt-2 text-red-400';
         return;
       }
       try {
-        const result = await OneSignalNotifications.sendTestNotificationIn1Min();
+        let result = await OneSignalNotifications.sendTestNotificationIn1Min();
+        // Si falla por "no se detectó dispositivo", esperar 2s y reintentar una vez (OneSignal puede tardar en iniciar)
+        if (!result.ok && result.error && result.error.indexOf('No se detectó') !== -1) {
+          statusEl.textContent = 'Esperando OneSignal...';
+          await new Promise(r => setTimeout(r, 2500));
+          result = await OneSignalNotifications.sendTestNotificationIn1Min();
+        }
         if (result.ok) {
-          statusEl.textContent = '✅ Programada. En 1 minuto te llegará una notificación de prueba.';
+          statusEl.textContent = '✅ Listo. En 1 minuto te llegará la notificación.';
           statusEl.className = 'text-xs mt-2 text-green-400';
         } else {
           statusEl.textContent = '❌ ' + (result.error || 'Error al programar.');
           statusEl.className = 'text-xs mt-2 text-red-400';
         }
       } catch (err) {
-        statusEl.textContent = '❌ Error: ' + (err.message || 'desconocido');
+        statusEl.textContent = '❌ ' + (err.message || 'Error. ¿Tienes la clave REST guardada?');
         statusEl.className = 'text-xs mt-2 text-red-400';
       }
     }
