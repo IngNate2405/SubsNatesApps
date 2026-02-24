@@ -164,9 +164,33 @@
     return result;
   }
 
+  /**
+   * Envía una notificación de prueba que llegará en 1 minuto (para verificar que push funciona).
+   * @returns {Promise<{ ok: boolean, error?: string }>}
+   */
+  async function sendTestNotificationIn1Min() {
+    const subscriptionId = await getSubscriptionId();
+    if (!subscriptionId) {
+      return { ok: false, error: 'No se detectó este dispositivo. Pulsa "Suscribirse a notificaciones push" primero.' };
+    }
+    const key = getRestApiKey();
+    if (!key) {
+      return { ok: false, error: 'Falta la Clave REST API. Pégala abajo y guarda.' };
+    }
+    const in1Min = new Date(Date.now() + 60 * 1000);
+    const sendAfterIso = in1Min.toISOString();
+    return await sendOneToOneSignal(subscriptionId, {
+      title: 'Prueba de notificación',
+      body: 'Si ves esto, las notificaciones push funcionan correctamente.',
+      sendAfterIso,
+      data: { test: true }
+    });
+  }
+
   window.OneSignalNotifications = {
     getRestApiKey,
     getSubscriptionId,
-    scheduleRemindersForSubscription
+    scheduleRemindersForSubscription,
+    sendTestNotificationIn1Min
   };
 })();

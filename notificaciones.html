@@ -32,6 +32,7 @@
   </script>
   <script src="onesignal-service.js"></script>
   <script src="onesignal-session.js"></script>
+  <script src="onesignal-notifications.js"></script>
   
   <style>
     body, html { overflow-x: hidden !important; max-width: 100vw; box-sizing: border-box; }
@@ -124,7 +125,11 @@
         <button type="button" onclick="checkOneSignalStatus()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm w-full">
           Verificar estado
         </button>
+        <button type="button" onclick="sendTestNotification1Min()" class="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg text-sm w-full">
+          Enviar notificación en 1 min (probar)
+        </button>
       </div>
+      <p id="test-1min-status" class="text-xs mt-2 text-gray-400"></p>
       <div class="mt-4 p-3 bg-[#2a2736] rounded-lg border border-gray-600">
         <label class="block text-sm font-medium text-gray-300 mb-2">Clave REST API (recordatorios al guardar)</label>
         <p class="text-xs text-gray-400 mb-2">OneSignal → Settings → Keys &amp; IDs → REST API Key.</p>
@@ -307,6 +312,30 @@
         input.placeholder = 'Clave guardada';
       } catch (e) {
         statusEl.textContent = '❌ No se pudo guardar.';
+        statusEl.className = 'text-xs mt-2 text-red-400';
+      }
+    }
+
+    async function sendTestNotification1Min() {
+      const statusEl = document.getElementById('test-1min-status');
+      statusEl.textContent = 'Enviando...';
+      statusEl.className = 'text-xs mt-2 text-yellow-400';
+      if (typeof OneSignalNotifications === 'undefined' || !OneSignalNotifications.sendTestNotificationIn1Min) {
+        statusEl.textContent = 'No se pudo cargar el módulo de notificaciones. Recarga la página.';
+        statusEl.className = 'text-xs mt-2 text-red-400';
+        return;
+      }
+      try {
+        const result = await OneSignalNotifications.sendTestNotificationIn1Min();
+        if (result.ok) {
+          statusEl.textContent = '✅ Programada. En 1 minuto te llegará una notificación de prueba.';
+          statusEl.className = 'text-xs mt-2 text-green-400';
+        } else {
+          statusEl.textContent = '❌ ' + (result.error || 'Error al programar.');
+          statusEl.className = 'text-xs mt-2 text-red-400';
+        }
+      } catch (err) {
+        statusEl.textContent = '❌ Error: ' + (err.message || 'desconocido');
         statusEl.className = 'text-xs mt-2 text-red-400';
       }
     }
