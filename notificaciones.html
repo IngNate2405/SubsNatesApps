@@ -15,6 +15,10 @@
   
   <script src="onesignal-config.js"></script>
   <script src="onesignal-config-local.js" onerror="console.log('onesignal-config-local.js no encontrado')"></script>
+  <!-- Firebase (para llamar a la Cloud Function proxy y evitar CORS con OneSignal) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+  <script src="firebase-config.js"></script>
   
   <!-- OneSignal SDK v16 - snippet recomendado con notifyButton -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -126,6 +130,7 @@
           Enviar notificación en 1 min
         </button>
         <p id="test-1min-status" class="text-xs mt-2 min-h-[1.25rem]"></p>
+        <p class="text-xs mt-1 text-amber-200/70">Si aparece error de CORS o "Load failed", despliega la Cloud Function (GUIA-FIREBASE.md) y configura onesignal.app_id y onesignal.rest_key en Firebase.</p>
       </div>
 
       <div id="onesignal-status" class="text-yellow-400 mb-3 text-sm">Verificando...</div>
@@ -334,8 +339,27 @@
         return;
       }
       try {
+        const subscriptionId = await OneSignalNotifications.getSubscriptionId();
+        if (!subscriptionId) {
+          statusEl.textContent = '❌ No se detectó este dispositivo. Pulsa "Suscribirse a notificaciones push" primero.';
+          statusEl.className = 'text-xs mt-2 text-red-400';
+          return;
+        }
+        // Intentar primero vía Cloud Function (evita CORS); si no está Firebase o falla, usar llamada directa
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 && firebase.functions) {
+          try {
+            const fn = firebase.functions().httpsCallable('sendOneSignalTestNotification');
+            const res = await fn({ subscriptionId: subscriptionId });
+            if (res.data && res.data.ok) {
+              statusEl.textContent = '✅ Listo. En 1 minuto te llegará la notificación.';
+              statusEl.className = 'text-xs mt-2 text-green-400';
+              return;
+            }
+          } catch (fnErr) {
+            console.warn('Cloud Function no disponible o error:', fnErr);
+          }
+        }
         let result = await OneSignalNotifications.sendTestNotificationIn1Min();
-        // Si falla por "no se detectó dispositivo", esperar 2s y reintentar una vez (OneSignal puede tardar en iniciar)
         if (!result.ok && result.error && result.error.indexOf('No se detectó') !== -1) {
           statusEl.textContent = 'Esperando OneSignal...';
           await new Promise(r => setTimeout(r, 2500));

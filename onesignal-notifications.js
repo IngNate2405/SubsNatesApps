@@ -98,11 +98,20 @@
       data: payload.data || {}
     };
 
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': key },
-      body: JSON.stringify(body)
-    });
+    let res;
+    try {
+      res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': key },
+        body: JSON.stringify(body)
+      });
+    } catch (fetchErr) {
+      const msg = (fetchErr && fetchErr.message) ? fetchErr.message : String(fetchErr);
+      if (/failed to fetch|load failed|networkerror|cors/i.test(msg)) {
+        return { ok: false, error: 'El navegador bloquea la petición a OneSignal (CORS). Usa la opción "Enviar notificación en 1 min" con Firebase desplegado, o configura el proxy en Configuración.' };
+      }
+      return { ok: false, error: msg || 'Error de red. Comprueba tu conexión.' };
+    }
 
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.id) {
